@@ -7,6 +7,7 @@ import DAO from './dao.json';
 import pathfinder from './pathfinder.json';
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
+import tileMapPhaserAbi from './tileMapPhaser.json'; // Add the ABI for TileMapPhaser
 
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
   const [TokenAddress] = useState('0x09e6E20FF399c2134C14232E172ce8ba2b03017E');
   const [pathfinderAddress] = useState('0x64491880c3f18276582e16D989943Aba6c141f04');
   const [DAOAddress] = useState('0x76f1640B15c372ff6dB116142044C6A5E33A1643');
+  const [tileMapPhaserAddress] = useState('0x4c879143942950d6A0f21eEC8366Ee0080f4Cb0b'); // Replace with your contract address
   const [isAdmin, setisAdmin] = useState(0);
   const [loadAddressX] = useState(0);
   const [walletAddress, setwalletAddress] = useState('');
@@ -41,9 +43,119 @@ function App() {
   
   
   const [inputTopicNO, setinputTopicNO] = useState(0);
-  
+
+  const [topicDetails, setTopicDetails] = useState(null);
+const [inputTopicID, setInputTopicID] = useState('');
+
+
+
+  const [tileX, setTileX] = useState('');
+  const [tileY, setTileY] = useState('');
+  const [tileDetails, setTileDetails] = useState(null);
+  const [switchStatus, setSwitchStatus] = useState(null);
+  const [paused, setPaused] = useState(null);
 
   
+
+
+const fetchTileDetails = async () => {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(tileMapPhaserAddress, tileMapPhaserAbi.abi, signer);
+
+    const tile = await contract.tiles(tileX, tileY);
+    setTileDetails(tile);
+  } catch (error) {
+    console.error("Error fetching tile details:", error);
+  }
+};
+
+const fetchContractStatus = async () => {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(tileMapPhaserAddress, tileMapPhaserAbi.abi, signer);
+
+    const switchState = await contract.switchStatus();
+    const pausedState = await contract.paused();
+    setSwitchStatus(switchState);
+    setPaused(pausedState);
+  } catch (error) {
+    console.error("Error fetching contract status:", error);
+  }
+};
+
+
+const togglePause = async (action) => {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(tileMapPhaserAddress, tileMapPhaserAbi.abi, signer);
+
+    if (action === "pause") {
+      await contract.pause();
+    } else if (action === "unpause") {
+      await contract.unpause();
+    }
+    await fetchContractStatus(); // Refresh the status
+  } catch (error) {
+    console.error(`Error toggling pause (${action}):`, error);
+  }
+};
+
+const toggleSwitchStatus = async () => {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(tileMapPhaserAddress, tileMapPhaserAbi.abi, signer);
+
+    await contract.setSwitchStatus();
+    await fetchContractStatus(); // Refresh the status
+  } catch (error) {
+    console.error("Error toggling switch status:", error);
+  }
+};
+
+
+
+
+  
+const fetchTopicDetails = async () => {
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(DAOAddress, DAO.abi, signer);
+
+    const topicID = parseInt(inputTopicID, 10);
+    if (isNaN(topicID) || topicID <= 0) {
+      alert("Please enter a valid topic ID.");
+      return;
+    }
+
+    const topic = await contract.Topics(topicID);
+
+    setTopicDetails({
+      status: topic.status.toString(),
+      title: topic.title,
+      content: topic.content,
+      starter: topic.starter,
+      startTime: new Date(topic.startTime.toNumber() * 1000).toLocaleString(),
+      finishTime: topic.finishTime.toNumber() === 0
+        ? "N/A"
+        : new Date(topic.finishTime.toNumber() * 1000).toLocaleString(),
+      commentNo: topic.commentNo.toString(),
+      tokeni: ethers.utils.formatUnits(topic.tokeni, 18),
+    });
+  } catch (error) {
+    console.error("Error fetching topic details:", error);
+    alert("Unable to fetch topic details. Please try again.");
+  }
+};
+
+
 
   useEffect(() => {
     const loadAddress = async () => {
@@ -509,6 +621,40 @@ Kilopi Admin Panel ( Harmony )
 
   <h4>D.A.O</h4>
 
+  <h5>Find Topic Details &nbsp;
+  <input
+    className="inputC"
+    placeholder="Enter Topic ID"
+    value={inputTopicID}
+    onChange={(event) => setInputTopicID(event.target.value)}
+  />
+  &nbsp;
+  <button
+    className="buttonC"
+    onClick={(event) => {
+      event.preventDefault();
+      fetchTopicDetails();
+    }}
+  >
+    Get Details
+  </button>
+  {topicDetails && (
+    <div className="topic-details">
+      <p><strong>Status:</strong> {topicDetails.status}</p>
+      <p><strong>Title:</strong> {topicDetails.title}</p>
+      <p><strong>Content:</strong> {topicDetails.content}</p>
+      <p><strong>Starter:</strong> {topicDetails.starter}</p>
+      <p><strong>Start Time:</strong> {topicDetails.startTime}</p>
+      <p><strong>Finish Time:</strong> {topicDetails.finishTime}</p>
+      <p><strong>Number of Comments:</strong> {topicDetails.commentNo}</p>
+      <p><strong>Staked Tokens:</strong> {topicDetails.tokeni} Tokens</p>
+    </div>
+  )}
+</h5>
+
+
+
+
   <h5>Finalize Topic &nbsp;
 
 
@@ -561,6 +707,91 @@ Kilopi Admin Panel ( Harmony )
 
 
 </div>
+
+
+<div className='card'>
+          <h4>Masters of Management</h4>
+
+          <h5>
+            Get Tile Details &nbsp;
+            <input
+              className="inputC"
+              placeholder="x"
+              value={tileX}
+              onChange={(e) => setTileX(e.target.value)}
+            />
+            <input
+              className="inputC"
+              placeholder="y"
+              value={tileY}
+              onChange={(e) => setTileY(e.target.value)}
+            />
+            &nbsp;
+            <button
+              className="buttonC"
+              onClick={(event) => {
+                event.preventDefault();
+                fetchTileDetails();
+              }}
+            >
+              Get Details
+            </button>
+            {tileDetails && (
+              <div className="tile-details">
+                <p><strong>Occupied:</strong> {tileDetails.isOccupied.toString()}</p>
+                <p><strong>Occupant:</strong> {tileDetails.occupant}</p>
+                <p><strong>On Sale:</strong> {tileDetails.isOnSale.toString()}</p>
+                <p><strong>Sale Price:</strong> {tileDetails.salePrice.toString()}</p>
+              </div>
+            )}
+          </h5>
+
+          <h5>
+            Contract Status &nbsp;
+            <button
+              className="buttonC"
+              onClick={(event) => {
+                event.preventDefault();
+                fetchContractStatus();
+              }}
+            >
+              Refresh Status
+            </button>
+            <p><strong>Switch Status:</strong> {switchStatus?.toString()}</p>
+            <p><strong>Paused:</strong> {paused?.toString()}</p>
+          </h5>
+
+          <h5>
+            Actions &nbsp;
+            <button
+              className="buttonC"
+              onClick={(event) => {
+                event.preventDefault();
+                togglePause("pause");
+              }}
+            >
+              Pause
+            </button>
+            <button
+              className="buttonC"
+              onClick={(event) => {
+                event.preventDefault();
+                togglePause("unpause");
+              }}
+            >
+              Unpause
+            </button>
+            <button
+              className="buttonC"
+              onClick={(event) => {
+                event.preventDefault();
+                toggleSwitchStatus();
+              }}
+            >
+              Toggle Switch Status
+            </button>
+          </h5>
+        </div>
 
 
 
