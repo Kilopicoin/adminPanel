@@ -16,7 +16,7 @@ function App() {
   const [TokenAddress] = useState('0x09e6E20FF399c2134C14232E172ce8ba2b03017E');
   const [pathfinderAddress] = useState('0x64491880c3f18276582e16D989943Aba6c141f04');
   const [DAOAddress] = useState('0x76f1640B15c372ff6dB116142044C6A5E33A1643');
-  const [tileMapPhaserAddress] = useState('0x4c879143942950d6A0f21eEC8366Ee0080f4Cb0b'); // Replace with your contract address
+  const [tileMapPhaserAddress] = useState('0x399721e792E69F1393917F36e1EF561234AfF07c'); // Replace with your contract address
   const [isAdmin, setisAdmin] = useState(0);
   const [loadAddressX] = useState(0);
   const [walletAddress, setwalletAddress] = useState('');
